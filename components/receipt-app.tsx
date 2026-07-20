@@ -12,14 +12,14 @@ const yen = new Intl.NumberFormat("ja-JP", {
 });
 
 type Filter = "すべて" | "8%" | "10%";
-type Tab = "receipts" | "summary";
+type Tab = "expenses" | "scanned" | "history";
 
 export default function ReceiptApp() {
   const [receipts, setReceipts] = useState<SavedReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState<Filter>("すべて");
-  const [activeTab, setActiveTab] = useState<Tab>("receipts");
+  const [activeTab, setActiveTab] = useState<Tab>("expenses");
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -123,32 +123,49 @@ export default function ReceiptApp() {
     }
   }
 
-  const visible = receipts.filter((r) => {
+  function filterReceipts(source: SavedReceipt[]) {
+    return source.filter((r) => {
     const taxMatch = filter === "すべて" ||
       (filter === "8%" ? r.tax_8_base > 0 : r.tax_10_base > 0);
     const textMatch = !query || `${r.merchant_name} ${r.items.map((i) => i.name).join(" ")}`
       .toLowerCase().includes(query.toLowerCase());
     return taxMatch && textMatch;
-  });
+    });
+  }
 
   const selectedYear = selectedMonth.getFullYear();
   const selectedMonthNumber = selectedMonth.getMonth() + 1;
   const monthKey = `${selectedYear}-${String(selectedMonthNumber).padStart(2, "0")}`;
   const monthLabel = `${selectedYear}年${selectedMonthNumber}月`;
-  const monthlyReceipts = receipts.filter((receipt) => receipt.purchase_date?.startsWith(monthKey));
-  const monthlyTotal = monthlyReceipts.reduce((sum, r) => sum + r.total_amount, 0);
-  const monthlyTax = monthlyReceipts.reduce((sum, r) => sum + r.total_tax_amount, 0);
-  const tax8Base = monthlyReceipts.reduce((sum, r) => sum + r.tax_8_base, 0);
-  const tax8Amount = monthlyReceipts.reduce((sum, r) => sum + r.tax_8_amount, 0);
-  const tax10Base = monthlyReceipts.reduce((sum, r) => sum + r.tax_10_base, 0);
-  const tax10Amount = monthlyReceipts.reduce((sum, r) => sum + r.tax_10_amount, 0);
+  const purchaseMonthReceipts = receipts.filter((receipt) => receipt.purchase_date?.startsWith(monthKey));
+  const scannedMonthReceipts = receipts.filter((receipt) => {
+    const created = new Date(receipt.created_at);
+    return created.getFullYear() === selectedYear && created.getMonth() + 1 === selectedMonthNumber;
+  });
+  const visibleExpenses = filterReceipts(purchaseMonthReceipts);
+  const historyReceipts = filterReceipts(receipts);
+  const monthlyTotal = purchaseMonthReceipts.reduce((sum, r) => sum + r.total_amount, 0);
+  const monthlyTax = purchaseMonthReceipts.reduce((sum, r) => sum + r.total_tax_amount, 0);
+  const scannedTotal = scannedMonthReceipts.reduce((sum, r) => sum + r.total_amount, 0);
+  const scannedTax = scannedMonthReceipts.reduce((sum, r) => sum + r.total_tax_amount, 0);
+  const tax8Base = scannedMonthReceipts.reduce((sum, r) => sum + r.tax_8_base, 0);
+  const tax8Amount = scannedMonthReceipts.reduce((sum, r) => sum + r.tax_8_amount, 0);
+  const tax10Base = scannedMonthReceipts.reduce((sum, r) => sum + r.tax_10_base, 0);
+  const tax10Amount = scannedMonthReceipts.reduce((sum, r) => sum + r.tax_10_amount, 0);
   const merchantTotals = Object.entries(
-    monthlyReceipts.reduce<Record<string, number>>((totals, receipt) => {
+    scannedMonthReceipts.reduce<Record<string, number>>((totals, receipt) => {
       const merchant = receipt.merchant_name || "購入先不明";
       totals[merchant] = (totals[merchant] || 0) + receipt.total_amount;
       return totals;
     }, {})
   ).sort((a, b) => b[1] - a[1]);
+  const historyGroups = Object.entries(
+    historyReceipts.reduce<Record<string, SavedReceipt[]>>((groups, receipt) => {
+      const date = receipt.purchase_date || "日付不明";
+      (groups[date] ||= []).push(receipt);
+      return groups;
+    }, {})
+  ).sort((a, b) => b[0].localeCompare(a[0]));
 
   function switchTab(tab: Tab) {
     setActiveTab(tab);
@@ -164,7 +181,38 @@ export default function ReceiptApp() {
   function showMerchantReceipts(merchant: string) {
     setQuery(merchant === "購入先不明" ? "" : merchant);
     setFilter("すべて");
-    switchTab("receipts");
+    switchTab("history");
+  }
+
+  function receiptCards(items: SavedReceipt[]) {
+    return (
+      <div className="receipt-list">
+        {items.map((receipt) => (
+          <button className="receipt-card" key={receipt.id} onClick={() => setSelected(receipt)}>
+            <div className="receipt-thumb">
+              {receipt.image_url ? <img src={receipt.image_url} alt="" /> : <ReceiptText size={25} />}
+            </div>
+            <div className="receipt-main">
+              <div className="merchant-row">
+                <b>{receipt.merchant_name || "購入先不明"}</b>
+                <strong>{yen.format(receipt.total_amount)}</strong>
+              </div>
+              <div className="receipt-meta">
+                <span>{receipt.purchase_date?.replaceAll("-", "/") || "日付不明"}</span>
+                <i>·</i>
+                <span>{receipt.purchase_time?.slice(0, 5) || "時間不明"}</span>
+                <i>·</i>
+                <span>{receipt.items.length}点</span>
+              </div>
+              <div className="tax-tags">
+                {receipt.tax_8_base > 0 && <span className="tax8">8% <b>{yen.format(receipt.tax_8_base)}</b></span>}
+                {receipt.tax_10_base > 0 && <span className="tax10">10% <b>{yen.format(receipt.tax_10_base)}</b></span>}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    );
   }
 
   async function deleteReceipt(receipt: SavedReceipt) {
@@ -199,6 +247,11 @@ export default function ReceiptApp() {
           </div>
         </div>
         <button className="icon-button" aria-label="設定"><Settings2 size={21} /></button>
+        <nav className="header-tabs" aria-label="表示メニュー">
+          <button className={activeTab === "expenses" ? "active" : ""} onClick={() => switchTab("expenses")}>今月の支出</button>
+          <button className={activeTab === "scanned" ? "active" : ""} onClick={() => switchTab("scanned")}>今月の集計</button>
+          <button className={activeTab === "history" ? "active" : ""} onClick={() => switchTab("history")}>履歴</button>
+        </nav>
       </header>
 
       <section className="content">
@@ -210,7 +263,7 @@ export default function ReceiptApp() {
         )}
         {error && <div className="error-note">{error}</div>}
 
-        <section className="hero">
+        {activeTab === "expenses" && <><section className="hero">
           <div>
             <div className="month-switcher">
               <button onClick={() => moveMonth(-1)} aria-label="前月"><ChevronLeft size={20} /></button>
@@ -221,7 +274,7 @@ export default function ReceiptApp() {
           </div>
           <p className="total">{yen.format(monthlyTotal)}</p>
           <div className="stats">
-            <span><b>{monthlyReceipts.length}</b> 枚のレシート</span>
+            <span><b>{purchaseMonthReceipts.length}</b> 枚のレシート</span>
             <i />
             <span>消費税 <b>{yen.format(monthlyTax)}</b></span>
           </div>
@@ -233,22 +286,24 @@ export default function ReceiptApp() {
             <div><b>レシートを読み取る</b><small>撮影または写真から選択</small></div>
             <Plus size={22} />
           </button>
-          <input
-            ref={fileRef}
-            hidden
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => {
-              void chooseImage(e.target.files?.[0]);
-              e.currentTarget.value = "";
-            }}
-          />
         </section>
+        </>}
 
-        {activeTab === "receipts" ? <section ref={contentRef} className="list-section">
+        <input
+          ref={fileRef}
+          hidden
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => {
+            void chooseImage(e.target.files?.[0]);
+            e.currentTarget.value = "";
+          }}
+        />
+
+        {activeTab === "expenses" && <section ref={contentRef} className="list-section">
           <div className="section-heading">
-            <div><p>最近のレシート</p><span>{visible.length}件</span></div>
+            <div><p>購入日のレシート</p><span>{visibleExpenses.length}件</span></div>
             <button><SlidersHorizontal size={16} /> 絞り込み</button>
           </div>
           <div className="search">
@@ -265,39 +320,14 @@ export default function ReceiptApp() {
 
           {loading ? (
             <div className="empty"><LoaderCircle className="spin" /> 読み込み中</div>
-          ) : visible.length === 0 ? (
+          ) : visibleExpenses.length === 0 ? (
             <div className="empty"><ReceiptText /> 該当するレシートはありません</div>
           ) : (
-            <div className="receipt-list">
-              {visible.map((receipt) => (
-                <button className="receipt-card" key={receipt.id} onClick={() => setSelected(receipt)}>
-                  <div className="receipt-thumb">
-                    {receipt.image_url
-                      ? <img src={receipt.image_url} alt="" />
-                      : <ReceiptText size={25} />}
-                  </div>
-                  <div className="receipt-main">
-                    <div className="merchant-row">
-                      <b>{receipt.merchant_name || "購入先不明"}</b>
-                      <strong>{yen.format(receipt.total_amount)}</strong>
-                    </div>
-                    <div className="receipt-meta">
-                      <span>{receipt.purchase_date?.replaceAll("-", "/") || "日付不明"}</span>
-                      <i>·</i>
-                      <span>{receipt.purchase_time?.slice(0, 5) || "時間不明"}</span>
-                      <i>·</i>
-                      <span>{receipt.items.length}点</span>
-                    </div>
-                    <div className="tax-tags">
-                      {receipt.tax_8_base > 0 && <span className="tax8">8% <b>{yen.format(receipt.tax_8_base)}</b></span>}
-                      {receipt.tax_10_base > 0 && <span className="tax10">10% <b>{yen.format(receipt.tax_10_base)}</b></span>}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+            receiptCards(visibleExpenses)
           )}
-        </section> : <section ref={contentRef} className="summary-section">
+        </section>}
+
+        {activeTab === "scanned" && <section ref={contentRef} className="summary-section">
           <div className="summary-heading">
             <div>
               <div className="month-switcher">
@@ -305,14 +335,14 @@ export default function ReceiptApp() {
                 <span className="eyebrow">{monthLabel}</span>
                 <button onClick={() => moveMonth(1)} aria-label="翌月"><ChevronRight size={20} /></button>
               </div>
-              <h2>月間集計</h2>
+              <h2>読み取り月の集計</h2>
             </div>
-            <span>{monthlyReceipts.length}枚</span>
+            <span>{scannedMonthReceipts.length}枚</span>
           </div>
           <div className="summary-total">
             <span>支出合計</span>
-            <b>{yen.format(monthlyTotal)}</b>
-            <small>うち消費税 {yen.format(monthlyTax)}</small>
+            <b>{yen.format(scannedTotal)}</b>
+            <small>うち消費税 {yen.format(scannedTax)}</small>
           </div>
           <h3>税率別の内訳</h3>
           <div className="summary-tax-grid">
@@ -341,13 +371,47 @@ export default function ReceiptApp() {
               </button>
             ))}
           </div>
+          <h3>この月に読み取ったレシート</h3>
+          {loading ? (
+            <div className="empty"><LoaderCircle className="spin" /> 読み込み中</div>
+          ) : scannedMonthReceipts.length === 0 ? (
+            <div className="empty"><ReceiptText /> この月に読み取ったレシートはありません</div>
+          ) : receiptCards(scannedMonthReceipts)}
+        </section>}
+
+        {activeTab === "history" && <section ref={contentRef} className="history-section">
+          <div className="section-heading">
+            <div><p>すべての履歴</p><span>{historyReceipts.length}件</span></div>
+          </div>
+          <div className="search">
+            <Search size={18} />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="お店や商品を検索" />
+          </div>
+          <div className="chips">
+            {(["すべて", "8%", "10%"] as Filter[]).map((value) => (
+              <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>
+                {value === "すべて" ? "すべて" : `税率 ${value}`}
+              </button>
+            ))}
+          </div>
+          {loading ? (
+            <div className="empty"><LoaderCircle className="spin" /> 読み込み中</div>
+          ) : historyGroups.length === 0 ? (
+            <div className="empty"><ReceiptText /> 該当するレシートはありません</div>
+          ) : historyGroups.map(([date, items]) => (
+            <div className="history-day" key={date}>
+              <div className="history-date">
+                <b>{date === "日付不明" ? date : `${date.slice(0, 4)}年${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日`}</b>
+                <span>{items.length}件・{yen.format(items.reduce((sum, item) => sum + item.total_amount, 0))}</span>
+              </div>
+              {receiptCards(items)}
+            </div>
+          ))}
         </section>}
       </section>
 
-      <nav className="bottom-nav">
-        <button className={activeTab === "receipts" ? "active" : ""} onClick={() => switchTab("receipts")}><ReceiptText size={21} /><span>レシート</span></button>
+      <nav className="bottom-nav scan-only">
         <button onClick={() => fileRef.current?.click()}><span className="nav-camera"><Camera size={24} /></span><span>読み取る</span></button>
-        <button className={activeTab === "summary" ? "active" : ""} onClick={() => switchTab("summary")}><SlidersHorizontal size={21} /><span>集計</span></button>
       </nav>
 
       {previews.length > 0 && (
