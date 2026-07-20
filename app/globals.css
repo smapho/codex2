@@ -67,8 +67,8 @@ button { color: inherit; }
 .summary-tax-card em { padding-top: 10px; border-top: 1px solid rgba(50,50,40,.12); font-size: 13px; font-style: normal; }
 .summary-tax-card em b { display: block; margin-top: 2px; font-size: 18px; }
 .merchant-summary { overflow: hidden; background: white; border-radius: 16px; }
-.merchant-summary > div:not(.empty) { display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; padding: 15px 14px; border-top: 1px solid var(--line); }
-.merchant-summary > div:first-child { border-top: 0; }
+.merchant-summary > button { width: 100%; display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; padding: 15px 14px; border: 0; border-top: 1px solid var(--line); background: white; text-align: left; }
+.merchant-summary > button:first-child { border-top: 0; }
 .merchant-summary .rank { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: #e9ece5; color: var(--green); font-size: 12px; font-weight: 700; }
 .merchant-summary b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
 .merchant-summary strong { font-size: 16px; }
@@ -112,7 +112,13 @@ button { color: inherit; }
 .sheet-title b { font-size: 14px; }
 .sheet-title small { font-size: 9px; color: var(--muted); margin-top: 3px; }
 .sheet-title button, .detail-head button { border: 0; background: #e8e5de; border-radius: 50%; width: 35px; height: 35px; display: grid; place-items: center; }
-.preview { display: block; width: 100%; max-height: 48vh; object-fit: contain; background: #e9e6df; border-radius: 16px; margin: 18px 0 14px; }
+.preview-grid { display: grid; gap: 10px; margin: 18px 0 12px; }
+.preview-grid.two { grid-template-columns: 1fr 1fr; }
+.preview-grid > div { position: relative; min-width: 0; }
+.preview-grid > div > span { position: absolute; z-index: 1; top: 8px; left: 8px; padding: 4px 7px; border-radius: 7px; background: rgba(31,77,59,.9); color: white; font-size: 11px; }
+.preview { display: block; width: 100%; height: min(40vh, 360px); object-fit: contain; background: #e9e6df; border-radius: 16px; }
+.preview-grid.two .preview { height: min(32vh, 280px); }
+.add-image-button { width: 100%; height: 45px; margin-bottom: 13px; border: 1px dashed #9aa99e; border-radius: 12px; background: #edf1e9; color: var(--green); display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 14px; font-weight: 700; }
 .password-field { display: grid; gap: 5px; color: var(--muted); font-size: 10px; margin-bottom: 12px; }
 .password-field input { height: 39px; border: 1px solid #ddd9d0; border-radius: 10px; background: white; padding: 0 10px; }
 .confirm-button { width: 100%; height: 52px; border: 0; border-radius: 14px; background: var(--green); color: white; font-weight: 700; display: flex; gap: 8px; align-items: center; justify-content: center; }
@@ -120,6 +126,7 @@ button { color: inherit; }
 .detail-head small { color: #666d65; font-size: 14px; }
 .detail-head h2 { margin: 3px 0 0; font-size: 25px; }
 .detail-image { width: 100%; height: 130px; object-fit: cover; object-position: top; border-radius: 13px; margin-top: 17px; }
+.detail-images { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
 .detail-total { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); padding: 20px 2px 16px; }
 .detail-total span { font-size: 17px; color: #586058; font-weight: 600; }
 .detail-total b { font-size: 32px; }
@@ -133,6 +140,7 @@ button { color: inherit; }
 .items > div { display: grid; grid-template-columns: 1fr auto auto; gap: 9px; align-items: center; border-top: 1px solid var(--line); padding: 14px 0; font-size: 15px; }
 .items small { color: var(--muted); }
 .items b { min-width: 62px; text-align: right; }
+.delete-button { width: 100%; height: 48px; margin-top: 22px; border: 1px solid #d99d91; border-radius: 13px; background: #fff3f0; color: #a34132; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

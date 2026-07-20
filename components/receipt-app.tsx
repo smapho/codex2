@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Camera, ChevronDown, ImageIcon, LoaderCircle, Plus, ReceiptText,
-  Search, Settings2, SlidersHorizontal, Sparkles, X
+  Search, Settings2, SlidersHorizontal, Sparkles, Trash2, X
 } from "lucide-react";
 import type { SavedReceipt } from "@/lib/types";
 
@@ -24,8 +24,8 @@ export default function ReceiptApp() {
   const [demo, setDemo] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<SavedReceipt | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLElement>(null);
@@ -82,24 +82,25 @@ export default function ReceiptApp() {
 
   async function chooseImage(next: File | undefined) {
     if (!next) return;
+    if (files.length >= 2) return;
     const optimized = await optimizeImage(next);
-    setFile(optimized);
-    setPreview(URL.createObjectURL(optimized));
+    setFiles((current) => [...current, optimized].slice(0, 2));
+    setPreviews((current) => [...current, URL.createObjectURL(optimized)].slice(0, 2));
     setError("");
   }
 
   function closeUpload() {
-    if (preview) URL.revokeObjectURL(preview);
-    setFile(null);
-    setPreview(null);
+    previews.forEach((preview) => URL.revokeObjectURL(preview));
+    setFiles([]);
+    setPreviews([]);
   }
 
   async function upload() {
-    if (!file) return;
+    if (!files.length) return;
     setUploading(true);
     setError("");
     const form = new FormData();
-    form.append("image", file);
+    files.forEach((file) => form.append("images", file));
     try {
       const res = await fetch("/api/receipts", {
         method: "POST",
@@ -126,14 +127,20 @@ export default function ReceiptApp() {
     return taxMatch && textMatch;
   });
 
-  const monthlyTotal = receipts.reduce((sum, r) => sum + r.total_amount, 0);
-  const monthlyTax = receipts.reduce((sum, r) => sum + r.total_tax_amount, 0);
-  const tax8Base = receipts.reduce((sum, r) => sum + r.tax_8_base, 0);
-  const tax8Amount = receipts.reduce((sum, r) => sum + r.tax_8_amount, 0);
-  const tax10Base = receipts.reduce((sum, r) => sum + r.tax_10_base, 0);
-  const tax10Amount = receipts.reduce((sum, r) => sum + r.tax_10_amount, 0);
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+  const monthLabel = `${currentYear}年${currentMonth}月`;
+  const monthlyReceipts = receipts.filter((receipt) => receipt.purchase_date?.startsWith(monthKey));
+  const monthlyTotal = monthlyReceipts.reduce((sum, r) => sum + r.total_amount, 0);
+  const monthlyTax = monthlyReceipts.reduce((sum, r) => sum + r.total_tax_amount, 0);
+  const tax8Base = monthlyReceipts.reduce((sum, r) => sum + r.tax_8_base, 0);
+  const tax8Amount = monthlyReceipts.reduce((sum, r) => sum + r.tax_8_amount, 0);
+  const tax10Base = monthlyReceipts.reduce((sum, r) => sum + r.tax_10_base, 0);
+  const tax10Amount = monthlyReceipts.reduce((sum, r) => sum + r.tax_10_amount, 0);
   const merchantTotals = Object.entries(
-    receipts.reduce<Record<string, number>>((totals, receipt) => {
+    monthlyReceipts.reduce<Record<string, number>>((totals, receipt) => {
       const merchant = receipt.merchant_name || "購入先不明";
       totals[merchant] = (totals[merchant] || 0) + receipt.total_amount;
       return totals;
@@ -143,6 +150,33 @@ export default function ReceiptApp() {
   function switchTab(tab: Tab) {
     setActiveTab(tab);
     window.setTimeout(() => contentRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
+  }
+
+  function showMerchantReceipts(merchant: string) {
+    setQuery(merchant === "購入先不明" ? "" : merchant);
+    setFilter("すべて");
+    switchTab("receipts");
+  }
+
+  async function deleteReceipt(receipt: SavedReceipt) {
+    if (!window.confirm(`${receipt.merchant_name || "この領収書"}を削除しますか？\nこの操作は取り消せません。`)) return;
+    setError("");
+    try {
+      const res = await fetch("/api/receipts", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          ...(password ? { "x-app-password": password } : {})
+        },
+        body: JSON.stringify({ id: receipt.id })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setReceipts((current) => current.filter((item) => item.id !== receipt.id));
+      setSelected(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "削除に失敗しました。");
+    }
   }
 
   return (
@@ -169,12 +203,12 @@ export default function ReceiptApp() {
 
         <section className="hero">
           <div>
-            <span className="eyebrow">2026年7月</span>
+            <span className="eyebrow">{monthLabel}</span>
             <h1>今月の支出</h1>
           </div>
           <p className="total">{yen.format(monthlyTotal)}</p>
           <div className="stats">
-            <span><b>{receipts.length}</b> 枚のレシート</span>
+            <span><b>{monthlyReceipts.length}</b> 枚のレシート</span>
             <i />
             <span>消費税 <b>{yen.format(monthlyTax)}</b></span>
           </div>
@@ -192,7 +226,10 @@ export default function ReceiptApp() {
             type="file"
             accept="image/*"
             capture="environment"
-            onChange={(e) => void chooseImage(e.target.files?.[0])}
+            onChange={(e) => {
+              void chooseImage(e.target.files?.[0]);
+              e.currentTarget.value = "";
+            }}
           />
         </section>
 
@@ -249,8 +286,8 @@ export default function ReceiptApp() {
           )}
         </section> : <section ref={contentRef} className="summary-section">
           <div className="summary-heading">
-            <div><span className="eyebrow">2026年7月</span><h2>今月の集計</h2></div>
-            <span>{receipts.length}枚</span>
+            <div><span className="eyebrow">{monthLabel}</span><h2>今月の集計</h2></div>
+            <span>{monthlyReceipts.length}枚</span>
           </div>
           <div className="summary-total">
             <span>支出合計</span>
@@ -277,11 +314,11 @@ export default function ReceiptApp() {
             {merchantTotals.length === 0 ? (
               <div className="empty"><ReceiptText /> まだレシートがありません</div>
             ) : merchantTotals.map(([merchant, amount], index) => (
-              <div key={merchant}>
+              <button key={merchant} onClick={() => showMerchantReceipts(merchant)}>
                 <span className="rank">{index + 1}</span>
                 <b>{merchant}</b>
                 <strong>{yen.format(amount)}</strong>
-              </div>
+              </button>
             ))}
           </div>
         </section>}
@@ -293,7 +330,7 @@ export default function ReceiptApp() {
         <button className={activeTab === "summary" ? "active" : ""} onClick={() => switchTab("summary")}><SlidersHorizontal size={21} /><span>集計</span></button>
       </nav>
 
-      {preview && (
+      {previews.length > 0 && (
         <div className="modal-backdrop">
           <section className="upload-sheet">
             <div className="sheet-handle" />
@@ -301,7 +338,19 @@ export default function ReceiptApp() {
               <div><span><ImageIcon size={20} /></span><div><b>この画像を読み取りますか？</b><small>AIが日付・商品・税率を自動で整理します</small></div></div>
               <button onClick={closeUpload}><X /></button>
             </div>
-            <img className="preview" src={preview} alt="選択した領収書" />
+            <div className={`preview-grid ${previews.length === 2 ? "two" : ""}`}>
+              {previews.map((preview, index) => (
+                <div key={preview}>
+                  <span>{index === 0 ? "上・1枚目" : "下・2枚目"}</span>
+                  <img className="preview" src={preview} alt={`選択した領収書 ${index + 1}`} />
+                </div>
+              ))}
+            </div>
+            {previews.length < 2 && (
+              <button className="add-image-button" onClick={() => fileRef.current?.click()}>
+                <Plus size={18} /> 長いレシートの2枚目を追加
+              </button>
+            )}
             <label className="password-field">
               閲覧パスワード（設定している場合）
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -321,7 +370,11 @@ export default function ReceiptApp() {
               <div><small>{selected.purchase_date || "日付不明"} {selected.purchase_time?.slice(0,5)}</small><h2>{selected.merchant_name}</h2></div>
               <button onClick={() => setSelected(null)}><X /></button>
             </div>
-            {selected.image_url && <a href={selected.image_url} target="_blank"><img className="detail-image" src={selected.image_url} alt="領収書" /></a>}
+            <div className="detail-images">
+              {(selected.image_urls?.length ? selected.image_urls : [selected.image_url]).filter(Boolean).map((url, index) => (
+                <a href={url} target="_blank" key={url}><img className="detail-image" src={url} alt={`領収書 ${index + 1}`} /></a>
+              ))}
+            </div>
             <div className="detail-total"><span>合計</span><b>{yen.format(selected.total_amount)}</b></div>
             <div className="tax-summary">
               <div><span>8% 対象</span><b>{yen.format(selected.tax_8_base)}</b><small>消費税 {yen.format(selected.tax_8_amount)}</small></div>
@@ -337,6 +390,9 @@ export default function ReceiptApp() {
                 </div>
               ))}
             </div>
+            <button className="delete-button" onClick={() => void deleteReceipt(selected)}>
+              <Trash2 size={18} /> この領収書を削除
+            </button>
           </section>
         </div>
       )}

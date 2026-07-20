@@ -27,5 +27,6 @@ export type ReceiptAnalysis = {
 export type SavedReceipt = ReceiptAnalysis & {
   id: string;
   image_url: string;
+  image_urls?: string[];
   created_at: string;
 };
