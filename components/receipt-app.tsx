@@ -189,9 +189,9 @@ export default function ReceiptApp() {
       <div className={`receipt-list${compact ? " compact-receipt-list" : ""}`}>
         {items.map((receipt) => (
           <button className="receipt-card" key={receipt.id} onClick={() => setSelected(receipt)}>
-            {!compact && <div className="receipt-thumb">
+            <div className="receipt-thumb">
               {receipt.image_url ? <img src={receipt.image_url} alt="" /> : <ReceiptText size={25} />}
-            </div>}
+            </div>
             <div className="receipt-main">
               {compact ? <>
                 <div className="compact-row">
