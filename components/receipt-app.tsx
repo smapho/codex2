@@ -184,15 +184,31 @@ export default function ReceiptApp() {
     switchTab("history");
   }
 
-  function receiptCards(items: SavedReceipt[]) {
+  function receiptCards(items: SavedReceipt[], compact = false) {
     return (
-      <div className="receipt-list">
+      <div className={`receipt-list${compact ? " compact-receipt-list" : ""}`}>
         {items.map((receipt) => (
           <button className="receipt-card" key={receipt.id} onClick={() => setSelected(receipt)}>
-            <div className="receipt-thumb">
+            {!compact && <div className="receipt-thumb">
               {receipt.image_url ? <img src={receipt.image_url} alt="" /> : <ReceiptText size={25} />}
-            </div>
+            </div>}
             <div className="receipt-main">
+              {compact ? <>
+                <div className="compact-row">
+                  <span className="compact-date">
+                    {receipt.purchase_date?.replaceAll("-", "/") || "日付不明"}　
+                    {receipt.purchase_time?.slice(0, 5) || "時間不明"}
+                  </span>
+                  <span className="compact-total">{receipt.items.length}件　<b>{yen.format(receipt.total_amount)}</b></span>
+                </div>
+                <div className="compact-row">
+                  <b className="compact-merchant">{receipt.merchant_name || "購入先不明"}</b>
+                  <div className="tax-tags">
+                    {receipt.tax_8_base > 0 && <span className="tax8">8% <b>{yen.format(receipt.tax_8_base)}</b></span>}
+                    {receipt.tax_10_base > 0 && <span className="tax10">10% <b>{yen.format(receipt.tax_10_base)}</b></span>}
+                  </div>
+                </div>
+              </> : <>
               <div className="merchant-row">
                 <b>{receipt.merchant_name || "購入先不明"}</b>
                 <div className="receipt-amount">
@@ -210,6 +226,7 @@ export default function ReceiptApp() {
                 <i>·</i>
                 <span>{receipt.items.length}点</span>
               </div>
+              </>}
             </div>
           </button>
         ))}
@@ -406,7 +423,7 @@ export default function ReceiptApp() {
                 <b>{date === "日付不明" ? date : `${date.slice(0, 4)}年${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日`}</b>
                 <span>{items.length}件・{yen.format(items.reduce((sum, item) => sum + item.total_amount, 0))}</span>
               </div>
-              {receiptCards(items)}
+              {receiptCards(items, true)}
             </div>
           ))}
         </section>}
