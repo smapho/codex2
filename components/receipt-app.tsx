@@ -195,7 +195,13 @@ export default function ReceiptApp() {
             <div className="receipt-main">
               <div className="merchant-row">
                 <b>{receipt.merchant_name || "購入先不明"}</b>
-                <strong>{yen.format(receipt.total_amount)}</strong>
+                <div className="receipt-amount">
+                  <strong>{yen.format(receipt.total_amount)}</strong>
+                  <div className="tax-tags">
+                    {receipt.tax_8_base > 0 && <span className="tax8">8% <b>{yen.format(receipt.tax_8_base)}</b></span>}
+                    {receipt.tax_10_base > 0 && <span className="tax10">10% <b>{yen.format(receipt.tax_10_base)}</b></span>}
+                  </div>
+                </div>
               </div>
               <div className="receipt-meta">
                 <span>{receipt.purchase_date?.replaceAll("-", "/") || "日付不明"}</span>
@@ -203,10 +209,6 @@ export default function ReceiptApp() {
                 <span>{receipt.purchase_time?.slice(0, 5) || "時間不明"}</span>
                 <i>·</i>
                 <span>{receipt.items.length}点</span>
-              </div>
-              <div className="tax-tags">
-                {receipt.tax_8_base > 0 && <span className="tax8">8% <b>{yen.format(receipt.tax_8_base)}</b></span>}
-                {receipt.tax_10_base > 0 && <span className="tax10">10% <b>{yen.format(receipt.tax_10_base)}</b></span>}
               </div>
             </div>
           </button>
