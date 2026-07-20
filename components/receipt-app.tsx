@@ -12,12 +12,14 @@ const yen = new Intl.NumberFormat("ja-JP", {
 });
 
 type Filter = "すべて" | "8%" | "10%";
+type Tab = "receipts" | "summary";
 
 export default function ReceiptApp() {
   const [receipts, setReceipts] = useState<SavedReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState<Filter>("すべて");
+  const [activeTab, setActiveTab] = useState<Tab>("receipts");
   const [query, setQuery] = useState("");
   const [demo, setDemo] = useState(false);
   const [error, setError] = useState("");
@@ -26,6 +28,7 @@ export default function ReceiptApp() {
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
 
   async function load() {
     setLoading(true);
@@ -125,6 +128,22 @@ export default function ReceiptApp() {
 
   const monthlyTotal = receipts.reduce((sum, r) => sum + r.total_amount, 0);
   const monthlyTax = receipts.reduce((sum, r) => sum + r.total_tax_amount, 0);
+  const tax8Base = receipts.reduce((sum, r) => sum + r.tax_8_base, 0);
+  const tax8Amount = receipts.reduce((sum, r) => sum + r.tax_8_amount, 0);
+  const tax10Base = receipts.reduce((sum, r) => sum + r.tax_10_base, 0);
+  const tax10Amount = receipts.reduce((sum, r) => sum + r.tax_10_amount, 0);
+  const merchantTotals = Object.entries(
+    receipts.reduce<Record<string, number>>((totals, receipt) => {
+      const merchant = receipt.merchant_name || "購入先不明";
+      totals[merchant] = (totals[merchant] || 0) + receipt.total_amount;
+      return totals;
+    }, {})
+  ).sort((a, b) => b[1] - a[1]);
+
+  function switchTab(tab: Tab) {
+    setActiveTab(tab);
+    window.setTimeout(() => contentRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
+  }
 
   return (
     <main className="shell">
@@ -177,7 +196,7 @@ export default function ReceiptApp() {
           />
         </section>
 
-        <section className="list-section">
+        {activeTab === "receipts" ? <section ref={contentRef} className="list-section">
           <div className="section-heading">
             <div><p>最近のレシート</p><span>{visible.length}件</span></div>
             <button><SlidersHorizontal size={16} /> 絞り込み</button>
@@ -228,13 +247,50 @@ export default function ReceiptApp() {
               ))}
             </div>
           )}
-        </section>
+        </section> : <section ref={contentRef} className="summary-section">
+          <div className="summary-heading">
+            <div><span className="eyebrow">2026年7月</span><h2>今月の集計</h2></div>
+            <span>{receipts.length}枚</span>
+          </div>
+          <div className="summary-total">
+            <span>支出合計</span>
+            <b>{yen.format(monthlyTotal)}</b>
+            <small>うち消費税 {yen.format(monthlyTax)}</small>
+          </div>
+          <h3>税率別の内訳</h3>
+          <div className="summary-tax-grid">
+            <div className="summary-tax-card tax8-card">
+              <strong>軽減税率 8%</strong>
+              <span>対象額</span>
+              <b>{yen.format(tax8Base)}</b>
+              <em>消費税 <b>{yen.format(tax8Amount)}</b></em>
+            </div>
+            <div className="summary-tax-card tax10-card">
+              <strong>標準税率 10%</strong>
+              <span>対象額</span>
+              <b>{yen.format(tax10Base)}</b>
+              <em>消費税 <b>{yen.format(tax10Amount)}</b></em>
+            </div>
+          </div>
+          <h3>購入先別</h3>
+          <div className="merchant-summary">
+            {merchantTotals.length === 0 ? (
+              <div className="empty"><ReceiptText /> まだレシートがありません</div>
+            ) : merchantTotals.map(([merchant, amount], index) => (
+              <div key={merchant}>
+                <span className="rank">{index + 1}</span>
+                <b>{merchant}</b>
+                <strong>{yen.format(amount)}</strong>
+              </div>
+            ))}
+          </div>
+        </section>}
       </section>
 
       <nav className="bottom-nav">
-        <button className="active"><ReceiptText size={21} /><span>レシート</span></button>
+        <button className={activeTab === "receipts" ? "active" : ""} onClick={() => switchTab("receipts")}><ReceiptText size={21} /><span>レシート</span></button>
         <button onClick={() => fileRef.current?.click()}><span className="nav-camera"><Camera size={24} /></span><span>読み取る</span></button>
-        <button><SlidersHorizontal size={21} /><span>集計</span></button>
+        <button className={activeTab === "summary" ? "active" : ""} onClick={() => switchTab("summary")}><SlidersHorizontal size={21} /><span>集計</span></button>
       </nav>
 
       {preview && (

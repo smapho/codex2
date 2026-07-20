@@ -46,6 +46,32 @@ button { color: inherit; }
 .scan-button b { display: block; font-size: 18px; }
 .scan-button small { display: block; margin-top: 4px; opacity: .78; font-size: 13px; }
 .list-section { padding: 24px 22px 40px; background: #f1efe9; border-radius: 28px 28px 0 0; min-height: 380px; }
+.summary-section { padding: 27px 22px 45px; background: #f1efe9; border-radius: 28px 28px 0 0; min-height: 430px; }
+.summary-heading { display: flex; justify-content: space-between; align-items: center; }
+.summary-heading h2 { margin: 4px 0 0; font-size: 23px; }
+.summary-heading > span { background: #e1ded5; color: #5e665d; border-radius: 20px; padding: 7px 12px; font-size: 14px; font-weight: 600; }
+.summary-total { margin-top: 20px; padding: 20px; color: white; background: var(--green); border-radius: 18px; }
+.summary-total > span, .summary-total > b, .summary-total > small { display: block; }
+.summary-total > span { font-size: 15px; opacity: .82; }
+.summary-total > b { margin: 5px 0 8px; font-size: 34px; letter-spacing: -.04em; }
+.summary-total > small { font-size: 14px; opacity: .9; }
+.summary-section h3 { margin: 25px 2px 12px; font-size: 18px; }
+.summary-tax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.summary-tax-card { border-radius: 16px; padding: 16px 13px; }
+.tax8-card { background: var(--lime); color: #405d36; }
+.tax10-card { background: var(--orange); color: #704c2f; }
+.summary-tax-card strong, .summary-tax-card > span, .summary-tax-card > b, .summary-tax-card em { display: block; }
+.summary-tax-card strong { font-size: 15px; margin-bottom: 13px; }
+.summary-tax-card > span { font-size: 13px; opacity: .8; }
+.summary-tax-card > b { font-size: 21px; margin: 2px 0 10px; }
+.summary-tax-card em { padding-top: 10px; border-top: 1px solid rgba(50,50,40,.12); font-size: 13px; font-style: normal; }
+.summary-tax-card em b { display: block; margin-top: 2px; font-size: 18px; }
+.merchant-summary { overflow: hidden; background: white; border-radius: 16px; }
+.merchant-summary > div:not(.empty) { display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; padding: 15px 14px; border-top: 1px solid var(--line); }
+.merchant-summary > div:first-child { border-top: 0; }
+.merchant-summary .rank { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: #e9ece5; color: var(--green); font-size: 12px; font-weight: 700; }
+.merchant-summary b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.merchant-summary strong { font-size: 16px; }
 .section-heading { display: flex; justify-content: space-between; align-items: center; }
 .section-heading div { display: flex; gap: 9px; align-items: center; }
 .section-heading p { margin: 0; font-weight: 700; font-size: 20px; }
@@ -117,5 +143,6 @@ button { color: inherit; }
   .hero { grid-column: 1; }
   .actions { grid-column: 1; }
   .list-section { grid-column: 2; grid-row: 2 / span 2; border-radius: 25px; }
+  .summary-section { grid-column: 2; grid-row: 2 / span 2; border-radius: 25px; }
   .bottom-nav { display: none; }
 }
