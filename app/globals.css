@@ -34,6 +34,9 @@ button { color: inherit; }
 .demo-note { background: #edf1e6; color: #47613d; }
 .error-note { background: #f8dfd9; color: #884635; }
 .hero { padding: 31px 22px 25px; }
+.month-switcher { display: inline-flex; align-items: center; gap: 9px; }
+.month-switcher button { width: 34px; height: 34px; border: 1px solid #dcd8cf; border-radius: 50%; background: #eeece6; color: var(--green); display: grid; place-items: center; }
+.month-switcher .eyebrow { min-width: 98px; text-align: center; }
 .eyebrow { color: var(--green); font-weight: 700; font-size: 14px; letter-spacing: .1em; }
 .hero h1 { margin: 5px 0 18px; font-size: 23px; }
 .total { font-size: clamp(38px, 10vw, 58px); font-weight: 600; letter-spacing: -.055em; margin: 0; }

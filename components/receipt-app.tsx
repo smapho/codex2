@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Camera, ChevronDown, ImageIcon, LoaderCircle, Plus, ReceiptText,
+  Camera, ChevronLeft, ChevronRight, ImageIcon, LoaderCircle, Plus, ReceiptText,
   Search, Settings2, SlidersHorizontal, Sparkles, Trash2, X
 } from "lucide-react";
 import type { SavedReceipt } from "@/lib/types";
@@ -20,6 +20,10 @@ export default function ReceiptApp() {
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState<Filter>("すべて");
   const [activeTab, setActiveTab] = useState<Tab>("receipts");
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [query, setQuery] = useState("");
   const [demo, setDemo] = useState(false);
   const [error, setError] = useState("");
@@ -127,11 +131,10 @@ export default function ReceiptApp() {
     return taxMatch && textMatch;
   });
 
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth() + 1;
-  const monthKey = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
-  const monthLabel = `${currentYear}年${currentMonth}月`;
+  const selectedYear = selectedMonth.getFullYear();
+  const selectedMonthNumber = selectedMonth.getMonth() + 1;
+  const monthKey = `${selectedYear}-${String(selectedMonthNumber).padStart(2, "0")}`;
+  const monthLabel = `${selectedYear}年${selectedMonthNumber}月`;
   const monthlyReceipts = receipts.filter((receipt) => receipt.purchase_date?.startsWith(monthKey));
   const monthlyTotal = monthlyReceipts.reduce((sum, r) => sum + r.total_amount, 0);
   const monthlyTax = monthlyReceipts.reduce((sum, r) => sum + r.total_tax_amount, 0);
@@ -150,6 +153,12 @@ export default function ReceiptApp() {
   function switchTab(tab: Tab) {
     setActiveTab(tab);
     window.setTimeout(() => contentRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
+  }
+
+  function moveMonth(offset: number) {
+    setSelectedMonth((current) =>
+      new Date(current.getFullYear(), current.getMonth() + offset, 1)
+    );
   }
 
   function showMerchantReceipts(merchant: string) {
@@ -203,8 +212,12 @@ export default function ReceiptApp() {
 
         <section className="hero">
           <div>
-            <span className="eyebrow">{monthLabel}</span>
-            <h1>今月の支出</h1>
+            <div className="month-switcher">
+              <button onClick={() => moveMonth(-1)} aria-label="前月"><ChevronLeft size={20} /></button>
+              <span className="eyebrow">{monthLabel}</span>
+              <button onClick={() => moveMonth(1)} aria-label="翌月"><ChevronRight size={20} /></button>
+            </div>
+            <h1>月間支出</h1>
           </div>
           <p className="total">{yen.format(monthlyTotal)}</p>
           <div className="stats">
@@ -286,7 +299,14 @@ export default function ReceiptApp() {
           )}
         </section> : <section ref={contentRef} className="summary-section">
           <div className="summary-heading">
-            <div><span className="eyebrow">{monthLabel}</span><h2>今月の集計</h2></div>
+            <div>
+              <div className="month-switcher">
+                <button onClick={() => moveMonth(-1)} aria-label="前月"><ChevronLeft size={20} /></button>
+                <span className="eyebrow">{monthLabel}</span>
+                <button onClick={() => moveMonth(1)} aria-label="翌月"><ChevronRight size={20} /></button>
+              </div>
+              <h2>月間集計</h2>
+            </div>
             <span>{monthlyReceipts.length}枚</span>
           </div>
           <div className="summary-total">
